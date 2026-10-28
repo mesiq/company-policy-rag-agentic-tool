@@ -7,11 +7,14 @@ A local Flask and SQLite employee self-service demo with a browser UI and a sepa
 In PowerShell from the project folder:
 
 ```powershell
-py -m venv .venv
+winget install --exact --id Python.Python.3.12
+py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
+
+If `py` is not available after installation, close and reopen PowerShell, then run the commands again.
 
 Set `DEMO_DEFAULT_PASSWORD` to the demo password shown on the login page, and set a persistent `FLASK_SECRET_KEY` in `.env`. Never commit `.env`. All seeded employees share the demo password; changing it does not update existing database credentials.
 
