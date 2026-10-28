@@ -1,0 +1,14 @@
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+
+# Python virtual environment and generated files
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local SQLite database (may contain employee data and password hashes)
+*.db
+*.sqlite
+*.sqlite3
