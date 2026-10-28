@@ -1,6 +1,6 @@
 # Employee AI Portal
 
-A local Flask and SQLite employee self-service demo with a browser UI and a separate command-line policy RAG tool.
+A local Flask and SQLite employee self-service demo with a browser UI and a policy RAG tool available in both the portal chat and command line.
 
 ## Setup (Windows)
 
@@ -16,7 +16,7 @@ Copy-Item .env.example .env
 
 If `py` is not available after installation, close and reopen PowerShell, then run the commands again.
 
-Set `DEMO_DEFAULT_PASSWORD` to the demo password shown on the login page, and set a persistent `FLASK_SECRET_KEY` in `.env`. Never commit `.env`. All seeded employees share the demo password; changing it does not update existing database credentials.
+In `.env`, set `DEMO_DEFAULT_PASSWORD` to `Demo@12345` to use the credentials shown on the login page (`EMP1001 / Demo@12345`), and replace `FLASK_SECRET_KEY` with a persistent random secret. Never commit `.env`. All seeded employees share the demo password; changing it after the database has been seeded does not update existing database credentials.
 
 Start the web app:
 
@@ -28,22 +28,45 @@ Open <http://127.0.0.1:5000>. On first run, the app creates `employee.db` and se
 
 ## Policy RAG
 
-The RAG tool is currently separate from the web app. It indexes `policies/leave_policy.pdf` and `policies/company_policy.pdf` into a local ChromaDB using CPU-based sentence-transformer embeddings. First ingestion may download the embedding model.
+The RAG tool indexes `policies/leave_policy.pdf` and `policies/company_policy.pdf` into a local ChromaDB using CPU-based sentence-transformer embeddings. Before using policy questions in the portal, create the index once:
 
 ```powershell
 python rag.py --ingest
+```
+
+First ingestion may download the embedding model. After indexing, sign in to the portal and ask policy questions in the chat. Without an LLM provider configured, the app returns relevant passages and citations.
+
+To generate concise answers, add the API key for your chosen provider to `.env` and set `LLM_PROVIDER` to `groq` or `gemini`:
+
+```dotenv
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your-gemini-api-key
+```
+
+Or, to use Groq:
+
+```dotenv
+LLM_PROVIDER=groq
+GROQ_API_KEY=your-groq-api-key
+```
+
+The portal uses only the provider named by `LLM_PROVIDER`; the API key for that provider must be set. If `LLM_PROVIDER` is missing or is not `groq` or `gemini`, the portal falls back to retrieval-only answers. The CLI provider is selected separately with its `--provider` option.
+
+The CLI can also be used directly:
+
+```powershell
 python rag.py --ask "What is the annual leave policy?"
 python rag.py --ask "What are work from home rules?" --category company
 python rag.py --test
 ```
 
-Semantic search needs no LLM key. To generate cited answers, add either `GROQ_API_KEY` or `GEMINI_API_KEY` to `.env`, then run:
+To generate a cited CLI answer:
 
 ```powershell
 python rag.py --answer "How much annual leave is available?" --provider groq
 ```
 
-Use `--provider gemini` to select Gemini. RAG is not connected to the browser chat or Flask API.
+Use `--provider gemini` to select Gemini in the CLI.
 
 ## API
 
@@ -54,12 +77,13 @@ Use `--provider gemini` to select Gemini. RAG is not connected to the browser ch
 | POST | `/api/login` | Sign in with JSON `employee_id` and `password` |
 | GET | `/api/me` | Current employee profile (session required) |
 | GET | `/api/leave-balance?year=YYYY` | Leave balances (session required; year optional) |
+| POST | `/api/policy-answer` | Answer a policy question (session required; JSON `question`) |
 | POST | `/api/logout` | Sign out |
 
 ## Current scope
 
-- The web chat uses simple keyword matching; it only retrieves profiles and leave balances.
-- Policy search and answers are CLI-only. Leave applications and HR-ticket workflows are not implemented.
+- The web chat uses simple keyword matching for employee profile and leave-balance requests; policy questions use the RAG index.
+- Leave applications and HR-ticket workflows are not implemented.
 - The HR-admin role is stored but does not grant separate permissions.
 - This is a local demo. The Flask server runs in debug mode; do not deploy it as-is.
 

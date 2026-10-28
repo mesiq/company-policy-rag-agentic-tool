@@ -574,7 +574,7 @@ input:focus {
                 <input
                     id="chatInput"
                     type="text"
-                    placeholder="Ask me about your profile, leave..."
+                    placeholder="Ask about your profile, leave balance, or company policies..."
                     autocomplete="off"
                     required
                 >
@@ -737,8 +737,9 @@ Welcome to your Employee AI Portal.
 I can currently help you with:
 • Viewing your employee profile
 • Checking your available leave balance
+• Answering questions from the company policy documents
 
-Policy search, leave applications, and other AI tools will be enabled in the upcoming layers.
+Leave applications are not enabled yet.
 
 How can I help you today?`
     );
@@ -868,6 +869,19 @@ async function sendMessage(question) {
     addMessage("user", question);
 
     const q = question.toLowerCase();
+    const asksAnnualEntitlement =
+        q.includes("annual leave") &&
+        (
+            q.includes("how much") ||
+            q.includes("how many") ||
+            q.includes("entitlement") ||
+            q.includes("available") ||
+            q.includes("days")
+        ) &&
+        !q.includes("my") &&
+        !q.includes("do i have") &&
+        !q.includes("balance") &&
+        !q.includes("remaining");
 
     try {
 
@@ -903,7 +917,8 @@ Joining Date: ${e.joining_date}`
                 q.includes("remaining") ||
                 q.includes("available") ||
                 q.includes("how many")
-            )
+            ) &&
+            !asksAnnualEntitlement
         ) {
 
             const data = await apiCall("/api/leave-balance");
@@ -936,17 +951,37 @@ Joining Date: ${e.joining_date}`
             );
         }
 
-        // RAG placeholder
+        // Policy questions use RAG; unrelated chat stays local.
         else if (
             q.includes("policy") ||
             q.includes("policies") ||
-            q.includes("handbook")
+            q.includes("handbook") ||
+            q.includes("work from home") ||
+            q.includes("remote work") ||
+            q.includes("working hours") ||
+            q.includes("office hours") ||
+            q.includes("leave") ||
+            q.includes("company rules") ||
+            q.includes("dress code") ||
+            q.includes("holiday") ||
+            q.includes("benefit") ||
+            asksAnnualEntitlement
         ) {
+
+            const data = await apiCall("/api/policy-answer", {
+                method: "POST",
+                body: JSON.stringify({ question })
+            });
+
+            const sources = data.sources
+                .map(source => `${source.source}, page ${source.page}`)
+                .join("\n");
 
             addMessage(
                 "assistant",
-                "Company policy search will be available " +
-                "after we connect the RAG knowledge base."
+                sources
+                    ? `${data.answer}\n\nSources:\n${sources}`
+                    : data.answer
             );
         }
 
@@ -955,13 +990,13 @@ Joining Date: ${e.joining_date}`
 
             addMessage(
                 "assistant",
-                "Currently I can retrieve your employee " +
-                "profile and leave balance from SQLite.\n\n" +
+                "I can retrieve your employee profile and leave " +
+                "balance, and answer questions about company policies.\n\n" +
                 "Try asking:\n" +
                 "• Show my profile\n" +
-                "• Show my leave balance\n\n" +
-                "We'll enable natural-language AI " +
-                "understanding in the agent layer."
+                "• Show my leave balance\n" +
+                "• What is the annual leave policy?\n" +
+                "• What are the work-from-home rules?"
             );
         }
 

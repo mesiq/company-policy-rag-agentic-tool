@@ -12,4 +12,4 @@ __pycache__/
 *.db
 *.sqlite
 *.sqlite3
-chroma_db/
+chroma_db/*
