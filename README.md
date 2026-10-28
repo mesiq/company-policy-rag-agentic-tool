@@ -1,23 +1,10 @@
 # Employee AI Portal
 
-A local employee self-service demo built with Flask, SQLite, and a single-page HTML frontend. It currently supports employee login, profile lookup, and leave-balance retrieval. The chat interface uses simple keyword matching; policy search and leave applications are placeholders, not implemented AI/RAG features.
+A local Flask and SQLite employee self-service demo with a browser UI and a separate command-line policy RAG tool.
 
-## Features
+## Setup (Windows)
 
-- Employee login with password hashes stored in SQLite.
-- Session-based authentication for employee profile and leave-balance endpoints.
-- A dashboard with profile information, leave balances, and a chat-style interface.
-- Demo data for 20 fictional employees across five departments.
-- Database tables prepared for leave requests and HR tickets; workflows for these tables are not implemented yet.
-
-## Requirements
-
-- Python 3.9 or newer.
-- `pip`.
-
-## Setup on Windows
-
-Open PowerShell in the project directory:
+In PowerShell from the project folder:
 
 ```powershell
 py -m venv .venv
@@ -26,59 +13,58 @@ python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edit `.env` and set both values. `DEMO_DEFAULT_PASSWORD` must match the password currently displayed on the login page (`Demo@12345`) for the seeded demo accounts to accept it:
+Set `DEMO_DEFAULT_PASSWORD` to the demo password shown on the login page, and set a persistent `FLASK_SECRET_KEY` in `.env`. Never commit `.env`. All seeded employees share the demo password; changing it does not update existing database credentials.
 
-```dotenv
-DEMO_DEFAULT_PASSWORD=Demo@12345
-FLASK_SECRET_KEY=choose-a-long-random-secret
-```
-
-The login page currently displays this shared demo password, so this setup is for local demonstration only. Do not use real employee data or reuse this password elsewhere. The `DEMO_DEFAULT_PASSWORD` value is used for all demo employees created during initial database seeding; changing it later does not update password hashes already stored in the database. The app reads `FLASK_SECRET_KEY` to sign session cookies. If it is omitted, the app generates a temporary key that changes when the app restarts, invalidating existing sessions. Do not commit `.env`.
-
-Start the local development server:
+Start the web app:
 
 ```powershell
 python app.py
 ```
 
-Open <http://127.0.0.1:5000>. Sign in with the demo employee ID shown on the page. All seeded employees share the configured `DEMO_DEFAULT_PASSWORD`.
+Open <http://127.0.0.1:5000>. On first run, the app creates `employee.db` and seeds demo employees and leave balances if the employee table is empty.
 
-The SQLite database is created as `employee.db` beside the application files. The app creates its tables and seeds demo records when it starts, but only seeds when the employee table is empty. Deleting the local database and restarting the app recreates the demo data.
+## Policy RAG
+
+The RAG tool is currently separate from the web app. It indexes `policies/leave_policy.pdf` and `policies/company_policy.pdf` into a local ChromaDB using CPU-based sentence-transformer embeddings. First ingestion may download the embedding model.
+
+```powershell
+python rag.py --ingest
+python rag.py --ask "What is the annual leave policy?"
+python rag.py --ask "What are work from home rules?" --category company
+python rag.py --test
+```
+
+Semantic search needs no LLM key. To generate cited answers, add either `GROQ_API_KEY` or `GEMINI_API_KEY` to `.env`, then run:
+
+```powershell
+python rag.py --answer "How much annual leave is available?" --provider groq
+```
+
+Use `--provider gemini` to select Gemini. RAG is not connected to the browser chat or Flask API.
 
 ## API
 
 | Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/` | Serves the employee portal. |
-| `GET` | `/api/health` | Checks that the Flask app can query SQLite. |
-| `POST` | `/api/login` | Accepts JSON with `employee_id` and `password`; establishes a session on success. |
-| `GET` | `/api/me` | Returns the signed-in employee profile. |
-| `GET` | `/api/leave-balance` | Returns leave balances for the signed-in employee. An optional `year` query parameter accepts four digits. |
-| `POST` | `/api/logout` | Clears the current session. |
+|---|---|---|
+| GET | `/` | Portal page |
+| GET | `/api/health` | Flask/SQLite health check |
+| POST | `/api/login` | Sign in with JSON `employee_id` and `password` |
+| GET | `/api/me` | Current employee profile (session required) |
+| GET | `/api/leave-balance?year=YYYY` | Leave balances (session required; year optional) |
+| POST | `/api/logout` | Sign out |
 
-Example login request body:
+## Current scope
 
-```json
-{
-  "employee_id": "EMP1001",
-  "password": "the DEMO_DEFAULT_PASSWORD value from your .env"
-}
-```
+- The web chat uses simple keyword matching; it only retrieves profiles and leave balances.
+- Policy search and answers are CLI-only. Leave applications and HR-ticket workflows are not implemented.
+- The HR-admin role is stored but does not grant separate permissions.
+- This is a local demo. The Flask server runs in debug mode; do not deploy it as-is.
 
-The browser uses the Flask session cookie when calling authenticated endpoints. API requests that require login return `401` when there is no valid session.
+## Main files
 
-## Current limitations
-
-- There is no language model, RAG knowledge base, policy document ingestion, or agent/tool orchestration.
-- Chat actions are selected by client-side keyword matching and only profile and leave-balance queries call implemented backend features.
-- Leave application and company-policy responses are placeholders.
-- The HR-admin role is stored in employee data but is not used to authorize admin actions.
-- The built-in Flask server runs in debug mode and is intended for local development only. Production deployment requires a production WSGI server, HTTPS, secure cookie settings, and production-grade secrets and data handling.
-
-## Project files
-
-- `app.py` — Flask application, page route, API endpoints, and session configuration.
-- `database.py` — SQLite schema, demo seeding, authentication, employee lookup, and leave-balance functions.
-- `templates/index.html` — Portal UI, styling, and browser-side API/chat logic.
-- `requirements.txt` — Python package dependencies.
-- `.env.example` — Environment-variable template; copy it to `.env` for local use.
+- `app.py` — Flask app and API
+- `database.py` — SQLite schema, demo data, and database functions
+- `rag.py` — PDF ingestion, semantic search, and optional LLM answers
+- `policies/` — Source policy PDFs
+- `templates/index.html` — Browser UI
+- `requirements.txt` — Python dependencies

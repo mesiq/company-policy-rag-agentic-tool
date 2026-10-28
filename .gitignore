@@ -5,6 +5,7 @@
 
 # Python virtual environment and generated files
 .venv/
+.venv312/
 __pycache__/
 *.py[cod]
 
