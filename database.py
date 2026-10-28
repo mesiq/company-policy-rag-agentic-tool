@@ -15,10 +15,10 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
 def _get_demo_password():
-    password = os.getenv("DB_PASSWORD")
+    password = os.getenv("DEMO_DEFAULT_PASSWORD")
     if not password:
         raise RuntimeError(
-            "DB_PASSWORD must be set in the .env file or environment."
+            "DEMO_DEFAULT_PASSWORD must be set in the .env file or environment."
         )
     return password
 
