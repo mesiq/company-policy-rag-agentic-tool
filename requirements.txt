@@ -9,3 +9,5 @@ chromadb==1.5.9
 pymupdf==2.0
 python-dotenv==1.2.4
 openai==3.40.0
+langchain-google-genai
+langchain-groq
