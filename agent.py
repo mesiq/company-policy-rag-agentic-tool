@@ -21,8 +21,14 @@ from rag import search_policies
 load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
 MODELS = {
-    "gemini": "gemini-3.1-flash-lite",
-    "groq": "openai/gpt-oss-20b"
+    "gemini": (
+        os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
+        or "gemini-3.1-flash-lite"
+    ),
+    "groq": (
+        os.getenv("GROQ_MODEL", "openai/gpt-oss-20b").strip()
+        or "openai/gpt-oss-20b"
+    )
 }
 
 WRITE_TOOLS = {
@@ -37,7 +43,16 @@ WRITE_TOOLS = {
 # -------------------------------------------
 # 1. MODEL SELECTION
 # -------------------------------------------
-def get_llm(provider="gemini"):
+def get_default_provider():
+    provider = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
+    if provider not in MODELS:
+        raise ValueError("LLM_PROVIDER must be gemini or groq")
+    return provider
+
+
+def get_llm(provider=None):
+    provider = provider or get_default_provider()
+
     if provider == "gemini":
         return ChatGoogleGenerativeAI(
             model=MODELS["gemini"],
@@ -349,7 +364,7 @@ def create_tools(employee_id):
 def run_agent(
     employee_id,
     question,
-    provider="gemini",
+    provider=None,
     history=None,
     confirm_write=None
 ):
@@ -461,9 +476,14 @@ def main():
     parser.add_argument(
         "--provider",
         choices=["gemini", "groq"],
-        default="gemini"
+        default=None
     )
     args = parser.parse_args()
+
+    try:
+        provider = args.provider or get_default_provider()
+    except ValueError as exc:
+        parser.error(str(exc))
 
     employee_id = args.employee.strip().upper()
     employee = get_employee(employee_id)
@@ -476,7 +496,7 @@ def main():
     print("Employee:", employee["full_name"])
     print("Employee ID:", employee_id)
     print("Department:", employee["department_name"])
-    print("Model:", MODELS[args.provider])
+    print("Model:", MODELS[provider])
     print("Type exit to quit.\n")
 
     history = []
@@ -493,7 +513,7 @@ def main():
             answer = run_agent(
                 employee_id,
                 question,
-                provider=args.provider,
+                provider=provider,
                 history=history,
                 confirm_write=terminal_confirmation
             )

@@ -50,7 +50,7 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=your-groq-api-key
 ```
 
-The portal uses only the provider named by `LLM_PROVIDER`; the API key for that provider must be set. If `LLM_PROVIDER` is missing or is not `groq` or `gemini`, the portal falls back to retrieval-only answers. The CLI provider is selected separately with its `--provider` option.
+The portal uses only the provider named by `LLM_PROVIDER`; the API key for that provider must be set. If `LLM_PROVIDER` is missing or is not `groq` or `gemini`, the portal falls back to retrieval-only answers. The agent CLI uses `LLM_PROVIDER` as its default provider (`gemini` when unset), and `--provider` overrides it. Set `GEMINI_MODEL` and `GROQ_MODEL` to override the default model IDs (`gemini-3.1-flash-lite` and `openai/gpt-oss-20b`).
 
 The CLI can also be used directly:
 
